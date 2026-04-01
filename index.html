@@ -1,0 +1,635 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Binary Converter</title>
+<link href="https://fonts.googleapis.com/css2?family=Space+Mono:ital,wght@0,400;0,700;1,400&family=Syne:wght@400;700;800&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #090c10;
+    --panel: #0d1117;
+    --border: #1e2a38;
+    --accent: #00e5a0;
+    --accent2: #00b4ff;
+    --dim: #2a3a4a;
+    --text: #ccd6f6;
+    --muted: #4a6080;
+    --glow: 0 0 16px rgba(0,229,160,0.18);
+  }
+
+  body {
+    font-family: 'Space Mono', monospace;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    overflow-x: hidden;
+    position: relative;
+  }
+
+  canvas#matrix {
+    position: fixed;
+    top: 0; left: 0;
+    width: 100%; height: 100%;
+    opacity: 0.045;
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  .wrapper {
+    position: relative;
+    z-index: 1;
+    max-width: 860px;
+    margin: 0 auto;
+    padding: 3rem 1.5rem 5rem;
+  }
+
+  header {
+    text-align: center;
+    margin-bottom: 3.5rem;
+  }
+
+  .badge {
+    display: inline-block;
+    font-size: 10px;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--accent);
+    border: 1px solid rgba(0,229,160,0.3);
+    padding: 4px 14px;
+    border-radius: 100px;
+    margin-bottom: 1.2rem;
+  }
+
+  h1 {
+    font-family: 'Syne', sans-serif;
+    font-size: clamp(2rem, 6vw, 3.4rem);
+    font-weight: 800;
+    letter-spacing: -0.02em;
+    line-height: 1.1;
+    color: #fff;
+  }
+
+  h1 span {
+    color: var(--accent);
+    position: relative;
+  }
+
+  .subtitle {
+    margin-top: 0.9rem;
+    font-size: 13px;
+    color: var(--muted);
+    letter-spacing: 0.04em;
+  }
+
+  .tabs {
+    display: flex;
+    gap: 0;
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    overflow: hidden;
+    margin-bottom: 2rem;
+    background: var(--panel);
+  }
+
+  .tab {
+    flex: 1;
+    padding: 0.85rem 1rem;
+    background: none;
+    border: none;
+    color: var(--muted);
+    font-family: 'Space Mono', monospace;
+    font-size: 12px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    cursor: pointer;
+    transition: color 0.2s, background 0.2s;
+    position: relative;
+  }
+
+  .tab.active {
+    color: var(--accent);
+    background: rgba(0,229,160,0.06);
+  }
+
+  .tab.active::after {
+    content: '';
+    position: absolute;
+    bottom: 0; left: 0; right: 0;
+    height: 2px;
+    background: var(--accent);
+    border-radius: 2px 2px 0 0;
+  }
+
+  .tab:hover:not(.active) { color: var(--text); }
+
+  .panel {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 2rem;
+    display: none;
+  }
+
+  .panel.active { display: block; animation: fadeIn 0.25s ease; }
+
+  @keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+
+  .field-label {
+    font-size: 11px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 0.6rem;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .field-label .dot {
+    width: 6px; height: 6px;
+    border-radius: 50%;
+    background: var(--accent);
+    box-shadow: 0 0 6px var(--accent);
+    animation: pulse 2s ease-in-out infinite;
+  }
+
+  @keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.3; }
+  }
+
+  textarea {
+    width: 100%;
+    background: #070b10;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    color: var(--text);
+    font-family: 'Space Mono', monospace;
+    font-size: 14px;
+    line-height: 1.7;
+    padding: 1rem 1.1rem;
+    resize: vertical;
+    min-height: 110px;
+    outline: none;
+    transition: border-color 0.2s;
+  }
+
+  textarea::placeholder { color: var(--dim); }
+  textarea:focus { border-color: rgba(0,229,160,0.4); }
+
+  .output-box {
+    background: #070b10;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 1rem 1.1rem;
+    min-height: 110px;
+    font-family: 'Space Mono', monospace;
+    font-size: 13px;
+    line-height: 1.8;
+    color: var(--accent);
+    word-break: break-all;
+    position: relative;
+    transition: border-color 0.3s;
+  }
+
+  .output-box.lit { border-color: rgba(0,229,160,0.35); }
+  .output-box .placeholder { color: var(--dim); font-size: 13px; }
+
+  .arrow-wrap {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 1.4rem 0;
+    gap: 12px;
+  }
+
+  .arrow-line {
+    flex: 1;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, var(--dim), transparent);
+  }
+
+  .convert-btn {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    background: var(--accent);
+    color: #040c09;
+    border: none;
+    border-radius: 10px;
+    padding: 0.7rem 1.6rem;
+    font-family: 'Space Mono', monospace;
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    cursor: pointer;
+    transition: transform 0.15s, box-shadow 0.15s, background 0.15s;
+    box-shadow: 0 0 0 rgba(0,229,160,0);
+  }
+
+  .convert-btn:hover {
+    background: #00ffb2;
+    box-shadow: 0 4px 24px rgba(0,229,160,0.35);
+    transform: translateY(-1px);
+  }
+
+  .convert-btn:active { transform: scale(0.97); }
+
+  .convert-btn svg { width: 16px; height: 16px; }
+
+  .actions {
+    display: flex;
+    gap: 10px;
+    margin-top: 1rem;
+    flex-wrap: wrap;
+  }
+
+  .action-btn {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    background: none;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 0.5rem 1rem;
+    color: var(--muted);
+    font-family: 'Space Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 0.06em;
+    cursor: pointer;
+    transition: color 0.2s, border-color 0.2s;
+  }
+
+  .action-btn:hover { color: var(--text); border-color: var(--muted); }
+  .action-btn.copied { color: var(--accent); border-color: rgba(0,229,160,0.4); }
+  .action-btn svg { width: 13px; height: 13px; }
+
+  .char-count {
+    font-size: 11px;
+    color: var(--dim);
+    text-align: right;
+    margin-top: 0.4rem;
+  }
+
+  .stats-row {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 10px;
+    margin-top: 1.5rem;
+  }
+
+  .stat-card {
+    background: rgba(0,229,160,0.04);
+    border: 1px solid rgba(0,229,160,0.12);
+    border-radius: 10px;
+    padding: 0.8rem 1rem;
+    text-align: center;
+  }
+
+  .stat-val {
+    font-size: 1.4rem;
+    font-weight: 700;
+    color: var(--accent);
+    font-family: 'Syne', sans-serif;
+  }
+
+  .stat-lbl {
+    font-size: 10px;
+    color: var(--muted);
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    margin-top: 2px;
+  }
+
+  .bit-visualizer {
+    margin-top: 1.6rem;
+    overflow: hidden;
+    border-radius: 10px;
+    border: 1px solid var(--border);
+    padding: 1rem;
+    background: #070b10;
+  }
+
+  .bit-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 3px;
+    margin-bottom: 6px;
+  }
+
+  .bit {
+    width: 18px; height: 18px;
+    border-radius: 4px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 9px;
+    font-weight: 700;
+    transition: background 0.1s;
+  }
+
+  .bit.one { background: rgba(0,229,160,0.2); color: var(--accent); }
+  .bit.zero { background: rgba(255,255,255,0.03); color: var(--dim); }
+
+  .char-label {
+    font-size: 9px;
+    color: var(--muted);
+    margin-bottom: 3px;
+    letter-spacing: 0.1em;
+  }
+
+  .char-group { margin-bottom: 10px; }
+
+  .section-sep {
+    height: 1px;
+    background: var(--border);
+    margin: 2rem 0;
+  }
+
+  footer {
+    text-align: center;
+    margin-top: 4rem;
+    font-size: 11px;
+    color: var(--dim);
+    letter-spacing: 0.06em;
+  }
+
+  footer span { color: rgba(0,229,160,0.5); }
+
+  @media (max-width: 560px) {
+    .stats-row { grid-template-columns: repeat(2, 1fr); }
+    .panel { padding: 1.2rem; }
+  }
+</style>
+</head>
+<body>
+
+<canvas id="matrix"></canvas>
+
+<div class="wrapper">
+
+  <header>
+    <div class="badge">01000010 01001001 01001110</div>
+    <h1>Human to <span>Binary</span></h1>
+    <p class="subtitle">translate any text into the language of machines</p>
+  </header>
+
+  <div class="tabs">
+    <button class="tab active" onclick="switchTab('encode')">&#9654; Text → Binary</button>
+    <button class="tab" onclick="switchTab('decode')">&#9654; Binary → Text</button>
+  </div>
+
+  <!-- ENCODE PANEL -->
+  <div class="panel active" id="panel-encode">
+    <div class="field-label"><span class="dot"></span> Your message</div>
+    <textarea id="enc-input" placeholder="Type anything here..." oninput="liveEncode()"></textarea>
+    <div class="char-count" id="enc-chars">0 characters</div>
+
+    <div class="arrow-wrap">
+      <div class="arrow-line"></div>
+      <button class="convert-btn" onclick="encodeText()">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="5 12 19 12"/><polyline points="13 6 19 12 13 18"/></svg>
+        Convert
+      </button>
+      <div class="arrow-line"></div>
+    </div>
+
+    <div class="field-label"><span class="dot"></span> Binary output</div>
+    <div class="output-box" id="enc-output">
+      <span class="placeholder">Binary will appear here...</span>
+    </div>
+
+    <div class="actions">
+      <button class="action-btn" id="copy-enc" onclick="copyText('enc-output','copy-enc')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>
+        Copy
+      </button>
+      <button class="action-btn" onclick="clearField('enc-input','enc-output','enc-chars','copy-enc')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6M14 11v6"/></svg>
+        Clear
+      </button>
+    </div>
+
+    <div id="enc-stats" style="display:none;">
+      <div class="section-sep"></div>
+      <div class="stats-row">
+        <div class="stat-card"><div class="stat-val" id="s-chars">0</div><div class="stat-lbl">Characters</div></div>
+        <div class="stat-card"><div class="stat-val" id="s-bits">0</div><div class="stat-lbl">Total Bits</div></div>
+        <div class="stat-card"><div class="stat-val" id="s-bytes">0</div><div class="stat-lbl">Bytes</div></div>
+      </div>
+      <div class="bit-visualizer" id="bit-viz" style="margin-top:1.2rem;"></div>
+    </div>
+  </div>
+
+  <!-- DECODE PANEL -->
+  <div class="panel" id="panel-decode">
+    <div class="field-label"><span class="dot"></span> Binary input (space-separated 8-bit groups)</div>
+    <textarea id="dec-input" placeholder="e.g. 01001000 01100101 01101100 01101100 01101111" oninput="liveDecode()"></textarea>
+    <div class="char-count" id="dec-chars">0 bits</div>
+
+    <div class="arrow-wrap">
+      <div class="arrow-line"></div>
+      <button class="convert-btn" onclick="decodeText()">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="5 12 19 12"/><polyline points="13 6 19 12 13 18"/></svg>
+        Decode
+      </button>
+      <div class="arrow-line"></div>
+    </div>
+
+    <div class="field-label"><span class="dot"></span> Decoded text</div>
+    <div class="output-box" id="dec-output">
+      <span class="placeholder">Your message will appear here...</span>
+    </div>
+
+    <div class="actions">
+      <button class="action-btn" id="copy-dec" onclick="copyText('dec-output','copy-dec')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>
+        Copy
+      </button>
+      <button class="action-btn" onclick="clearField('dec-input','dec-output','dec-chars','copy-dec')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6M14 11v6"/></svg>
+        Clear
+      </button>
+    </div>
+
+    <div id="dec-stats" style="display:none;">
+      <div class="section-sep"></div>
+      <div class="stats-row" style="grid-template-columns: repeat(2,1fr);">
+        <div class="stat-card"><div class="stat-val" id="d-bytes">0</div><div class="stat-lbl">Bytes decoded</div></div>
+        <div class="stat-card"><div class="stat-val" id="d-chars">0</div><div class="stat-lbl">Characters</div></div>
+      </div>
+    </div>
+  </div>
+
+  <footer>Made with <span>01101100 01101111 01110110 01100101</span> &nbsp;|&nbsp; Every character is 8 bits</footer>
+</div>
+
+<script>
+// Matrix rain
+const canvas = document.getElementById('matrix');
+const ctx = canvas.getContext('2d');
+let cols, drops;
+
+function initMatrix() {
+  canvas.width = window.innerWidth;
+  canvas.height = window.innerHeight;
+  cols = Math.floor(canvas.width / 18);
+  drops = Array(cols).fill(1);
+}
+
+function drawMatrix() {
+  ctx.fillStyle = 'rgba(9,12,16,0.12)';
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+  ctx.fillStyle = '#00e5a0';
+  ctx.font = '13px Space Mono, monospace';
+  drops.forEach((y, i) => {
+    const char = Math.random() > 0.5 ? '1' : '0';
+    ctx.fillText(char, i * 18, y * 18);
+    if (y * 18 > canvas.height && Math.random() > 0.975) drops[i] = 0;
+    drops[i]++;
+  });
+}
+
+initMatrix();
+window.addEventListener('resize', initMatrix);
+setInterval(drawMatrix, 60);
+
+// Tabs
+function switchTab(tab) {
+  document.querySelectorAll('.tab').forEach((t,i) => t.classList.toggle('active', (i===0&&tab==='encode')||(i===1&&tab==='decode')));
+  document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+  document.getElementById('panel-' + tab).classList.add('active');
+}
+
+// Encode
+function textToBinary(text) {
+  return text.split('').map(c => c.charCodeAt(0).toString(2).padStart(8,'0')).join(' ');
+}
+
+function liveEncode() {
+  const text = document.getElementById('enc-input').value;
+  document.getElementById('enc-chars').textContent = text.length + ' character' + (text.length!==1?'s':'');
+  if (text) {
+    const bin = textToBinary(text);
+    const box = document.getElementById('enc-output');
+    box.textContent = bin;
+    box.classList.add('lit');
+    updateEncStats(text, bin);
+    buildBitViz(text);
+    document.getElementById('enc-stats').style.display = 'block';
+  } else {
+    resetEncOutput();
+  }
+}
+
+function encodeText() {
+  liveEncode();
+  const box = document.getElementById('enc-output');
+  box.style.animation = 'none';
+  box.offsetHeight;
+  box.style.animation = 'fadeIn 0.3s ease';
+}
+
+function updateEncStats(text, bin) {
+  document.getElementById('s-chars').textContent = text.length;
+  document.getElementById('s-bits').textContent = text.length * 8;
+  document.getElementById('s-bytes').textContent = text.length;
+}
+
+function buildBitViz(text) {
+  const viz = document.getElementById('bit-viz');
+  const MAX = 8;
+  const sample = text.slice(0, MAX);
+  viz.innerHTML = '<div class="char-label">Bit pattern preview (first ' + Math.min(text.length, MAX) + ' chars)</div>';
+  sample.split('').forEach(ch => {
+    const bin = ch.charCodeAt(0).toString(2).padStart(8,'0');
+    const grp = document.createElement('div');
+    grp.className = 'char-group';
+    grp.innerHTML = '<div class="char-label">' + (ch === ' ' ? 'SPACE' : ch) + ' = ' + ch.charCodeAt(0) + '</div><div class="bit-row">' +
+      bin.split('').map(b => `<div class="bit ${b==='1'?'one':'zero'}">${b}</div>`).join('') + '</div>';
+    viz.appendChild(grp);
+  });
+  if (text.length > MAX) {
+    const more = document.createElement('div');
+    more.style.cssText = 'font-size:11px;color:var(--muted);margin-top:4px;';
+    more.textContent = '+ ' + (text.length - MAX) + ' more characters...';
+    viz.appendChild(more);
+  }
+}
+
+function resetEncOutput() {
+  const box = document.getElementById('enc-output');
+  box.innerHTML = '<span class="placeholder">Binary will appear here...</span>';
+  box.classList.remove('lit');
+  document.getElementById('enc-stats').style.display = 'none';
+}
+
+// Decode
+function binaryToText(bin) {
+  const parts = bin.trim().split(/\s+/);
+  const invalid = parts.find(p => !/^[01]{8}$/.test(p));
+  if (invalid) throw new Error('Invalid: "' + invalid + '" — use space-separated 8-bit groups');
+  return parts.map(b => String.fromCharCode(parseInt(b, 2))).join('');
+}
+
+function liveDecode() {
+  const bin = document.getElementById('dec-input').value;
+  const bits = bin.replace(/\s/g,'').length;
+  document.getElementById('dec-chars').textContent = bits + ' bit' + (bits!==1?'s':'');
+  const box = document.getElementById('dec-output');
+  if (!bin.trim()) {
+    box.innerHTML = '<span class="placeholder">Your message will appear here...</span>';
+    box.classList.remove('lit');
+    document.getElementById('dec-stats').style.display = 'none';
+    return;
+  }
+  try {
+    const text = binaryToText(bin);
+    box.textContent = text;
+    box.style.color = 'var(--text)';
+    box.classList.add('lit');
+    document.getElementById('d-bytes').textContent = bin.trim().split(/\s+/).length;
+    document.getElementById('d-chars').textContent = text.length;
+    document.getElementById('dec-stats').style.display = 'block';
+  } catch(e) {
+    box.textContent = e.message;
+    box.style.color = '#e24b4a';
+    box.classList.remove('lit');
+    document.getElementById('dec-stats').style.display = 'none';
+  }
+}
+
+function decodeText() { liveDecode(); }
+
+// Shared utils
+function copyText(outputId, btnId) {
+  const box = document.getElementById(outputId);
+  const text = box.textContent;
+  if (!text || box.querySelector('.placeholder')) return;
+  navigator.clipboard.writeText(text).then(() => {
+    const btn = document.getElementById(btnId);
+    btn.classList.add('copied');
+    btn.querySelector('svg').style.stroke = 'var(--accent)';
+    const prev = btn.innerHTML;
+    btn.innerHTML = btn.innerHTML.replace('Copy','Copied!');
+    setTimeout(() => { btn.innerHTML = prev; btn.classList.remove('copied'); btn.querySelector('svg').style.stroke=''; }, 1800);
+  });
+}
+
+function clearField(inputId, outputId, countId, btnId) {
+  document.getElementById(inputId).value = '';
+  const box = document.getElementById(outputId);
+  box.innerHTML = '<span class="placeholder">' + (outputId==='enc-output'?'Binary will appear here...':'Your message will appear here...') + '</span>';
+  box.classList.remove('lit');
+  box.style.color = '';
+  document.getElementById(countId).textContent = '0 ' + (countId==='enc-chars'?'characters':'bits');
+  if (outputId==='enc-output') document.getElementById('enc-stats').style.display = 'none';
+  if (outputId==='dec-output') document.getElementById('dec-stats').style.display = 'none';
+}
+</script>
+</body>
+</html>
